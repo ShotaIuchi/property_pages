@@ -23,6 +23,18 @@ html,body{margin:0;padding:0;height:100%}
 .info-legend h4{margin:0 0 6px;font-size:13px}
 .info-legend .color-box{display:inline-block;width:16px;height:12px;margin-right:4px;vertical-align:middle;border:1px solid #999}
 .info-legend .marker-dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:4px;vertical-align:middle;border:2px solid #fff;box-shadow:0 0 2px rgba(0,0,0,.4)}
+
+.age-control.collapsed .age-body{display:none}
+.age-control .toggle-btn{background:none;border:none;cursor:pointer;font-size:16px;float:right;padding:0;margin:-2px 0 0;color:#666}
+.info-legend.collapsed .legend-body{display:none}
+.info-legend .toggle-btn{background:none;border:none;cursor:pointer;font-size:16px;float:right;padding:0;margin:-2px 0 0;color:#666}
+@media(max-width:768px){
+.age-control{max-width:200px;font-size:11px;padding:6px 10px}
+.age-control h4{font-size:12px}
+.age-control button{font-size:10px;padding:2px 5px;margin:1px}
+.info-legend{font-size:10px;padding:6px 8px;max-width:160px}
+.info-legend h4{font-size:11px}
+}
 </style>
 </head>
 <body>
@@ -57,16 +69,17 @@ jAL=L.layerGroup();jhsPolyData.features.forEach(f=>{const c=L.geoJSON(f).getBoun
 jML=L.layerGroup();jhsPtData.features.forEach(f=>{const co=f.geometry.coordinates;const cm=L.circleMarker([co[1],co[0]],{radius:8,fillColor:'#2c3e50',fillOpacity:1,color:'#fff',weight:2});const mp=jhsPolyData.features.find(pf=>pf.properties.school_name===f.properties.school_name&&pf.properties.municipality===f.properties.municipality);if(mp)cm.bindPopup(()=>makePopup(mp.properties,true));jML.addLayer(cm)});
 }
 build();ePL.addTo(map);eLL.addTo(map);eML.addTo(map);map.fitBounds(ePL.getBounds());
-L.control.layers({'国土地理院 淡色地図':pale,'国土地理院 標準地図':std,'OpenStreetMap':osm},{'小学校区ポリゴン':ePL,'小学校 合計ラベル':eLL,'小学校 年齢別ラベル':eAL,'中学校区ポリゴン':jPL,'中学校 合計ラベル':jLL,'中学校 年齢別ラベル':jAL},{collapsed:false}).addTo(map);
-const ac=L.control({position:'topleft'});ac.onAdd=function(){const d=L.DomUtil.create('div','age-control');d.innerHTML='<h4>年齢範囲</h4><div><button id="btn-es" onclick="setRange(6,11)">小学校（6年）</button><button id="btn-jhs" onclick="setRange(12,14)">中学校（3年）</button><button id="btn-pre" onclick="setRange(0,5)">就学前（0-5）</button><button id="btn-all" onclick="setRange(0,14)">全体</button><button id="btn-custom" onclick="toggleCustom()">カスタム</button></div><div id="custom-row" class="custom-row"><input type="number" id="age-from" min="0" max="14" value="0" onchange="applyCustom()"><span>〜</span><input type="number" id="age-to" min="0" max="14" value="14" onchange="applyCustom()"><span>歳</span></div>';L.DomEvent.disableClickPropagation(d);L.DomEvent.disableScrollPropagation(d);return d};ac.addTo(map);
+L.control.layers({'国土地理院 淡色地図':pale,'国土地理院 標準地図':std,'OpenStreetMap':osm},{'小学校区ポリゴン':ePL,'小学校 合計ラベル':eLL,'小学校 年齢別ラベル':eAL,'中学校区ポリゴン':jPL,'中学校 合計ラベル':jLL,'中学校 年齢別ラベル':jAL},{collapsed:true}).addTo(map);
+const ac=L.control({position:'topleft'});ac.onAdd=function(){const d=L.DomUtil.create('div','age-control');d.innerHTML='<h4>年齢範囲<button class="toggle-btn" onclick="this.closest(\'.age-control\').classList.toggle(\'collapsed\')">▼</button></h4><div class="age-body"><div><button id="btn-es" onclick="setRange(6,11)">小学校（6年）</button><button id="btn-jhs" onclick="setRange(12,14)">中学校（3年）</button><button id="btn-pre" onclick="setRange(0,5)">就学前（0-5）</button><button id="btn-all" onclick="setRange(0,14)">全体</button><button id="btn-custom" onclick="toggleCustom()">カスタム</button></div><div id="custom-row" class="custom-row"><input type="number" id="age-from" min="0" max="14" value="0" onchange="applyCustom()"><span>〜</span><input type="number" id="age-to" min="0" max="14" value="14" onchange="applyCustom()"><span>歳</span></div></div>';L.DomEvent.disableClickPropagation(d);L.DomEvent.disableScrollPropagation(d);return d};ac.addTo(map);
 function setActiveBtn(id){document.querySelectorAll('.age-control button').forEach(b=>b.classList.remove('active'));if(id)document.getElementById(id).classList.add('active')}
 function setRange(s,e){ageStart=s;ageEnd=e;setActiveBtn({'6-11':'btn-es','12-14':'btn-jhs','0-5':'btn-pre','0-14':'btn-all'}[s+'-'+e]||null);document.getElementById('custom-row').classList.remove('show');updateAll()}
 function toggleCustom(){const r=document.getElementById('custom-row');r.classList.toggle('show');if(r.classList.contains('show')){setActiveBtn('btn-custom');document.getElementById('age-from').value=ageStart;document.getElementById('age-to').value=ageEnd}}
 function applyCustom(){ageStart=parseInt(document.getElementById('age-from').value);ageEnd=parseInt(document.getElementById('age-to').value);if(ageStart>ageEnd){const t=ageStart;ageStart=ageEnd;ageEnd=t};setActiveBtn('btn-custom');updateAll()}
 function updateAll(){ePL.eachLayer(l=>{if(l.feature)l.setStyle({fillColor:esColor(calcTotal(l.feature.properties))})});jPL.eachLayer(l=>{if(l.feature)l.setStyle({fillColor:jhsColor(calcTotal(l.feature.properties))})});[eLL,jLL].forEach(lg=>lg.eachLayer(m=>{if(m._fp)m.setIcon(L.divIcon({className:'',html:mkL(m._fp,m._j),iconSize:[0,0]}))}));[eAL,jAL].forEach(lg=>lg.eachLayer(m=>{if(m._fp)m.setIcon(L.divIcon({className:'',html:mkAL(m._fp,m._j),iconSize:[0,0]}))}));updateLegend()}
 const legend=L.control({position:'bottomright'});legend.onAdd=function(){const d=L.DomUtil.create('div','info-legend');d.id='legend';return d};legend.addTo(map);
-function updateLegend(){const el=document.getElementById('legend');const ec=[[1000,'1,000超','#99000d'],[700,'700〜1,000','#cb181d'],[500,'500〜700','#ef3b2c'],[300,'300〜500','#fb6a4a'],[150,'150〜300','#fc9272'],[50,'50〜150','#fcbba1'],[0,'〜50','#fee5d9']];const jc=[[2000,'2,000超','#084594'],[1200,'1,200〜2,000','#2171b5'],[800,'800〜1,200','#4292c6'],[500,'500〜800','#6baed6'],[300,'300〜500','#9ecae1'],[150,'150〜300','#c6dbef'],[0,'〜150','#eff3ff']];let h='<h4>'+ageStart+'〜'+ageEnd+'歳 合計人数</h4><b>小学校区</b><br>';ec.forEach(c=>h+='<span class="color-box" style="background:'+c[2]+'"></span>'+c[1]+'<br>');h+='<span class="marker-dot" style="background:#c0392b"></span>小学校所在地<br><br><b>中学校区</b><br>';jc.forEach(c=>h+='<span class="color-box" style="background:'+c[2]+'"></span>'+c[1]+'<br>');h+='<span class="marker-dot" style="background:#2c3e50"></span>中学校所在地<br><br><small>* = 按分推定値<br>出典: 国土数値情報, 国勢調査境界データ, 各市町村統計</small>';el.innerHTML=h}
+function updateLegend(){const el=document.getElementById('legend');const ec=[[1000,'1,000超','#99000d'],[700,'700〜1,000','#cb181d'],[500,'500〜700','#ef3b2c'],[300,'300〜500','#fb6a4a'],[150,'150〜300','#fc9272'],[50,'50〜150','#fcbba1'],[0,'〜50','#fee5d9']];const jc=[[2000,'2,000超','#084594'],[1200,'1,200〜2,000','#2171b5'],[800,'800〜1,200','#4292c6'],[500,'500〜800','#6baed6'],[300,'300〜500','#9ecae1'],[150,'150〜300','#c6dbef'],[0,'〜150','#eff3ff']];let h='<h4>'+ageStart+'〜'+ageEnd+'歳 合計人数<button class="toggle-btn" onclick="this.closest(\'.info-legend\').classList.toggle(\'collapsed\')">▼</button></h4><div class="legend-body"><b>小学校区</b><br>';ec.forEach(c=>h+='<span class="color-box" style="background:'+c[2]+'"></span>'+c[1]+'<br>');h+='<span class="marker-dot" style="background:#c0392b"></span>小学校所在地<br><br><b>中学校区</b><br>';jc.forEach(c=>h+='<span class="color-box" style="background:'+c[2]+'"></span>'+c[1]+'<br>');h+='<span class="marker-dot" style="background:#2c3e50"></span>中学校所在地<br><br><small>* = 按分推定値<br>出典: 国土数値情報, 国勢調査境界データ, 各市町村統計</small></div>';el.innerHTML=h}
 updateLegend();setActiveBtn('btn-es');
+if(window.innerWidth<=768){document.querySelector('.age-control').classList.add('collapsed');document.querySelector('.info-legend').classList.add('collapsed')}
 </script>
 </body>
 </html>
