@@ -96,7 +96,6 @@
 </style>
 </head>
 <body>
-<h1>ローン返済 × 投資 シミュレーター</h1>
 <div class="summary" id="summary"></div>
 <div class="container">
   <div class="left-col">
@@ -147,11 +146,11 @@
       </div>
       <div class="param-row">
         <label>返済期間 <span class="val" id="v_years">35年</span></label>
-        <input type="range" class="loan-slider" id="s_years" min="13" max="35" step="1" value="35">
+        <input type="range" class="loan-slider" id="s_years" min="5" max="35" step="1" value="35">
       </div>
       <div class="param-row">
         <label>ローン金利 <span class="val" id="v_rate">2.0%</span></label>
-        <input type="range" class="loan-slider" id="s_rate" min="10" max="50" step="1" value="20">
+        <input type="range" class="loan-slider" id="s_rate" min="0" max="50" step="1" value="20">
       </div>
     </div>
     <div class="param-group">
@@ -605,8 +604,11 @@ const mainChart = new Chart($('mainChart').getContext('2d'), {
 const netChart = new Chart($('netChart').getContext('2d'), {
   type: 'line',
   data: { labels: [], datasets: [
+    { label: 'ローン返済（年間）', borderColor: '#f97316', backgroundColor: 'rgba(249,115,22,0.08)', fill: true, tension: 0.3, pointRadius: 1, borderWidth: 2 },
+    { label: '投資（年間）', borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,0.08)', fill: true, tension: 0.3, pointRadius: 1, borderWidth: 2 },
     { label: '家族コスト（年間）', borderColor: '#e879f9', backgroundColor: 'rgba(232,121,249,0.08)', fill: true, tension: 0.3, pointRadius: 1, borderWidth: 2, borderDash: [6, 3], hidden: false },
-    { label: '固定資産税（年間）', borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,0.08)', fill: true, tension: 0.3, pointRadius: 1, borderWidth: 2, borderDash: [4, 4], hidden: false }
+    { label: '固定資産税（年間）', borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,0.08)', fill: true, tension: 0.3, pointRadius: 1, borderWidth: 2, borderDash: [4, 4], hidden: false },
+    { label: '合計支出（年間）', borderColor: '#38bdf8', backgroundColor: 'transparent', tension: 0.3, pointRadius: 2, borderWidth: 2.5 }
   ]},
   options: {
     responsive: true, maintainAspectRatio: false,
@@ -736,11 +738,30 @@ function update() {
   mainChart.options.plugins.annotation.annotations = annotations;
   mainChart.update('none');
 
+  // 合計支出（年間）= ローン返済年額 + 投資年額 + 家族コスト年額 + 固定資産税年額
+  const yearlyExpense = [];
+  for (let i = 0; i <= totalYears; i++) {
+    const loanAnnual = i < p.years ? d.monthlyPayment * 12 : 0;
+    const invAnnual = (d.monthlyInv[i] || 0) * 12;
+    const costAnnual = showCost ? (yearlyCost[i] || 0) : 0;
+    const taxAnnual = yearlyTax[i] || 0;
+    yearlyExpense.push(loanAnnual + invAnnual + costAnnual + taxAnnual);
+  }
+
   // 年額チャート
+  const yearlyLoan = [];
+  const yearlyInv = [];
+  for (let i = 0; i <= totalYears; i++) {
+    yearlyLoan.push(i < p.years ? d.monthlyPayment * 12 : 0);
+    yearlyInv.push((d.monthlyInv[i] || 0) * 12);
+  }
   netChart.data.labels = labels;
-  netChart.data.datasets[0].data = showCost ? yearlyCost.slice(0, totalYears + 1) : [];
-  netChart.data.datasets[0].hidden = !showCost;
-  netChart.data.datasets[1].data = yearlyTax.slice(0, totalYears + 1);
+  netChart.data.datasets[0].data = yearlyLoan;
+  netChart.data.datasets[1].data = yearlyInv;
+  netChart.data.datasets[2].data = showCost ? yearlyCost.slice(0, totalYears + 1) : [];
+  netChart.data.datasets[2].hidden = !showCost;
+  netChart.data.datasets[3].data = yearlyTax.slice(0, totalYears + 1);
+  netChart.data.datasets[4].data = yearlyExpense;
   netChart.options.plugins.annotation.annotations = annotations;
   netChart.update('none');
 }
