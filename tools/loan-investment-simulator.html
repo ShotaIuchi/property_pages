@@ -204,7 +204,14 @@
   </div>
   <div class="charts-area">
     <div class="chart-container" style="height:420px;"><canvas id="mainChart"></canvas></div>
-    <div class="chart-container" style="height:320px;"><canvas id="netChart"></canvas></div>
+    <div class="chart-container" style="height:320px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+        <span id="t_yearly" class="active" style="font-size:0.8rem;color:#38bdf8;font-weight:700;">年額</span>
+        <label class="toggle-switch"><input type="checkbox" id="s_costunit"><span class="slider"></span></label>
+        <span id="t_monthly" style="font-size:0.8rem;color:#cbd5e1;">月額</span>
+      </div>
+      <canvas id="netChart"></canvas>
+    </div>
   </div>
 </div>
 
@@ -618,7 +625,10 @@ const netChart = new Chart($('netChart').getContext('2d'), {
       tooltip: {
         callbacks: {
           title: items => { const l = items[0]?.label; return Array.isArray(l) ? l.join(' / ') : l || ''; },
-          label: ctx => `${ctx.dataset.label}: ${comma((ctx.parsed.y / 10000).toFixed(0))}万円/年`,
+          label: ctx => {
+            const unit = $('s_costunit').checked ? '万円/月' : '万円/年';
+            return `${ctx.dataset.label}: ${comma((ctx.parsed.y / 10000).toFixed(ctx.parsed.y < 100000 ? 1 : 0))}${unit}`;
+          },
           afterBody: function(items) { if (!items.length) return []; return familyTooltipLines(items[0].dataIndex); }
         }
       },
@@ -748,20 +758,36 @@ function update() {
     yearlyExpense.push(loanAnnual + invAnnual + costAnnual + taxAnnual);
   }
 
-  // 年額チャート
+  // 支出チャート（年額/月額トグル）
+  const isMonthly = $('s_costunit').checked;
+  const div = isMonthly ? 12 : 1;
+  const unitLabel = isMonthly ? '万円/月' : '万円/年';
+  $('t_yearly').className = isMonthly ? '' : 'active';
+  $('t_yearly').style.color = isMonthly ? '#cbd5e1' : '#38bdf8';
+  $('t_yearly').style.fontWeight = isMonthly ? '400' : '700';
+  $('t_monthly').className = isMonthly ? 'active' : '';
+  $('t_monthly').style.color = isMonthly ? '#38bdf8' : '#cbd5e1';
+  $('t_monthly').style.fontWeight = isMonthly ? '700' : '400';
   const yearlyLoan = [];
   const yearlyInv = [];
   for (let i = 0; i <= totalYears; i++) {
-    yearlyLoan.push(i < p.years ? d.monthlyPayment * 12 : 0);
-    yearlyInv.push((d.monthlyInv[i] || 0) * 12);
+    yearlyLoan.push((i < p.years ? d.monthlyPayment * 12 : 0) / div);
+    yearlyInv.push(((d.monthlyInv[i] || 0) * 12) / div);
   }
   netChart.data.labels = labels;
   netChart.data.datasets[0].data = yearlyLoan;
   netChart.data.datasets[1].data = yearlyInv;
-  netChart.data.datasets[2].data = showCost ? yearlyCost.slice(0, totalYears + 1) : [];
+  netChart.data.datasets[2].data = (showCost ? yearlyCost.slice(0, totalYears + 1) : []).map(v => v / div);
   netChart.data.datasets[2].hidden = !showCost;
-  netChart.data.datasets[3].data = yearlyTax.slice(0, totalYears + 1);
-  netChart.data.datasets[4].data = yearlyExpense;
+  netChart.data.datasets[3].data = yearlyTax.slice(0, totalYears + 1).map(v => v / div);
+  netChart.data.datasets[4].data = yearlyExpense.map(v => v / div);
+  const periodLabel = isMonthly ? '月間' : '年間';
+  netChart.data.datasets[0].label = `ローン返済（${periodLabel}）`;
+  netChart.data.datasets[1].label = `投資（${periodLabel}）`;
+  netChart.data.datasets[2].label = `家族コスト（${periodLabel}）`;
+  netChart.data.datasets[3].label = `固定資産税（${periodLabel}）`;
+  netChart.data.datasets[4].label = `合計支出（${periodLabel}）`;
+  netChart.options.scales.y.title.text = unitLabel;
   netChart.options.plugins.annotation.annotations = annotations;
   netChart.update('none');
 }
@@ -772,6 +798,7 @@ $('s_compound').addEventListener('change', update);
 $('s_showcost').addEventListener('change', update);
 $('s_negcost').addEventListener('change', update);
 $('s_areaunit').addEventListener('change', update);
+$('s_costunit').addEventListener('change', update);
 
 // デフォルト家族
 familyMembers = [
